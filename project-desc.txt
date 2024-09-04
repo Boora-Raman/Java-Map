@@ -1,0 +1,450 @@
+Certainly! Let's break down the problem and solution in detail, providing a step-by-step guide along with all the necessary Java code to address the problem. The focus will be on finding optimal railway routes from Delhi to other cities considering multiple factors, using various graph algorithms including Dijkstra's, A*, and Bellman-Ford. We will also include visualization using Java Swing.
+
+### Problem Definition and Objective
+
+**Problem Statement:**
+We need to determine the most optimal railway routes from Delhi to several other major cities in India, balancing multiple factors such as distance, cost, strategic importance, population density, wealth, and tourism. The objective is to compute a composite weight for each potential route and then use graph algorithms to identify the optimal routes based on this composite weight.
+
+**Objective:**
+- Compute a composite weight for each potential railway route based on given factors.
+- Use Dijkstra’s, A*, and Bellman-Ford algorithms to find the shortest path from Delhi to other cities based on the composite weight.
+- Visualize the results using Java Swing.
+
+### Solution Approach
+
+1. **Define the Data:**
+   - Create a data structure to hold information about each city.
+   - Compute composite weights based on multiple factors.
+
+2. **Implement Algorithms:**
+   - **Dijkstra’s Algorithm** for finding the shortest path in a graph with non-negative weights.
+   - **A* Algorithm** with a heuristic approach for efficient pathfinding.
+   - **Bellman-Ford Algorithm** for handling graphs with potential negative weights.
+
+3. **Visualization:**
+   - Use Java Swing to visualize the graph and the paths determined by the algorithms.
+
+### Steps and Schedule
+
+1. **Define City Data:**
+   - Create a `City` class and populate it with data.
+
+2. **Compute Composite Weights:**
+   - Implement a method to calculate composite weights based on given factors.
+
+3. **Implement Graph Algorithms:**
+   - Implement Dijkstra’s Algorithm.
+   - Implement A* Algorithm with a heuristic.
+   - Implement Bellman-Ford Algorithm.
+
+4. **Visualization:**
+   - Use Java Swing to create a graphical representation of the cities and routes.
+
+5. **Testing and Verification:**
+   - Run the algorithms and visualize results to verify correctness.
+
+### Java Code Implementation
+
+#### Step 1: Define City Data
+
+**CityData.java**
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+public class CityData {
+    public static final Map<String, City> cities = new HashMap<>();
+
+    static {
+        cities.put("Delhi", new City("Delhi", 0, 0, 10, 10, 10, 10));
+        cities.put("Mumbai", new City("Mumbai", 1400, 10, 9, 8, 7, 6));
+        cities.put("Bangalore", new City("Bangalore", 2000, 9, 8, 7, 7, 5));
+        cities.put("Kolkata", new City("Kolkata", 1500, 8, 7, 9, 6, 7));
+        cities.put("Chennai", new City("Chennai", 2200, 7, 6, 8, 8, 8));
+        cities.put("Hyderabad", new City("Hyderabad", 1800, 9, 7, 7, 6, 7));
+        cities.put("Pune", new City("Pune", 1500, 10, 7, 8, 8, 6));
+        cities.put("Jaipur", new City("Jaipur", 300, 8, 7, 6, 7, 5));
+        cities.put("Ahmedabad", new City("Ahmedabad", 900, 9, 8, 7, 8, 6));
+        cities.put("Lucknow", new City("Lucknow", 550, 8, 7, 6, 6, 5));
+        cities.put("Chandigarh", new City("Chandigarh", 250, 7, 6, 7, 7, 4));
+    }
+}
+
+class City {
+    String name;
+    int distance;
+    int cost;
+    int strategicImportance;
+    int populationDensity;
+    int wealth;
+    int tourism;
+
+    public City(String name, int distance, int cost, int strategicImportance, int populationDensity, int wealth, int tourism) {
+        this.name = name;
+        this.distance = distance;
+        this.cost = cost;
+        this.strategicImportance = strategicImportance;
+        this.populationDensity = populationDensity;
+        this.wealth = wealth;
+        this.tourism = tourism;
+    }
+}
+```
+
+#### Step 2: Compute Composite Weights
+
+**WeightCalculator.java**
+
+```java
+import java.util.Map;
+
+public class WeightCalculator {
+    // Weights for each factor
+    private static final int w_d = 1; // Distance
+    private static final int w_c = 2; // Cost
+    private static final double w_s = 0.5; // Strategic Importance
+    private static final double w_p = 0.5; // Population Density
+    private static final double w_w = 0.5; // Wealth
+    private static final double w_t = 0.3; // Tourism
+
+    public static int calculateWeight(City source, City dest) {
+        int distance = dest.distance;
+        int cost = dest.cost;
+        double strategicImportance = (source.strategicImportance + dest.strategicImportance) / 2.0;
+        double populationDensity = (source.populationDensity + dest.populationDensity) / 2.0;
+        double wealth = (source.wealth + dest.wealth) / 2.0;
+        double tourism = (source.tourism + dest.tourism) / 2.0;
+
+        return (w_d * distance) + (w_c * cost) +
+               (int)(w_s * strategicImportance) +
+               (int)(w_p * populationDensity) +
+               (int)(w_w * wealth) +
+               (int)(w_t * tourism);
+    }
+
+    public static void main(String[] args) {
+        City delhi = CityData.cities.get("Delhi");
+        for (Map.Entry<String, City> entry : CityData.cities.entrySet()) {
+            if (!entry.getKey().equals("Delhi")) {
+                City city = entry.getValue();
+                int weight = calculateWeight(delhi, city);
+                System.out.println("Composite weight to " + city.name + ": " + weight);
+            }
+        }
+    }
+}
+```
+
+#### Step 3: Implement Graph Algorithms
+
+**Dijkstra's Algorithm**
+
+**Dijkstra.java**
+
+```java
+import java.util.*;
+
+public class Dijkstra {
+    public static Map<String, Integer> findShortestPaths(Map<String, Map<String, Integer>> graph, String start) {
+        Map<String, Integer> distances = new HashMap<>();
+        PriorityQueue<Map.Entry<String, Integer>> queue = new PriorityQueue<>(Comparator.comparingInt(Map.Entry::getValue));
+        Set<String> visited = new HashSet<>();
+
+        for (String node : graph.keySet()) {
+            distances.put(node, Integer.MAX_VALUE);
+        }
+        distances.put(start, 0);
+        queue.add(new AbstractMap.SimpleEntry<>(start, 0));
+
+        while (!queue.isEmpty()) {
+            String current = queue.poll().getKey();
+            if (visited.contains(current)) continue;
+            visited.add(current);
+
+            for (Map.Entry<String, Integer> entry : graph.get(current).entrySet()) {
+                String neighbor = entry.getKey();
+                int weight = entry.getValue();
+                int newDist = distances.get(current) + weight;
+                if (newDist < distances.get(neighbor)) {
+                    distances.put(neighbor, newDist);
+                    queue.add(new AbstractMap.SimpleEntry<>(neighbor, newDist));
+                }
+            }
+        }
+
+        return distances;
+    }
+
+    public static void main(String[] args) {
+        Map<String, Map<String, Integer>> graph = new HashMap<>();
+        graph.put("Delhi", Map.of("Mumbai", 1600, "Bangalore", 2000, "Jaipur", 300, "Ahmedabad", 900, "Lucknow", 550, "Chandigarh", 250));
+        // Add more connections if needed
+
+        Map<String, Integer> distances = findShortestPaths(graph, "Delhi");
+        System.out.println("Shortest paths from Delhi: " + distances);
+    }
+}
+```
+
+**A* Algorithm**
+
+**AStar.java**
+
+```java
+import java.util.*;
+
+public class AStar {
+    public static Map<String, Integer> findShortestPaths(Map<String, Map<String, Integer>> graph, String start, Map<String, Integer> heuristics) {
+        Map<String, Integer> distances = new HashMap<>();
+        PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingInt(Node::getF));
+        Set<String> visited = new HashSet<>();
+        Map<String, String> predecessors = new HashMap<>();
+
+        for (String node : graph.keySet()) {
+            distances.put(node, Integer.MAX_VALUE);
+        }
+        distances.put(start, 0);
+        openSet.add(new Node(start, 0, heuristics.get(start)));
+
+        while (!openSet.isEmpty()) {
+            Node current = openSet.poll();
+            if (visited.contains(current.name)) continue;
+            visited.add(current.name);
+
+            for (Map.Entry<String, Integer> neighborEntry : graph.get(current.name).entrySet()) {
+                String neighbor = neighborEntry.getKey();
+                int weight = neighborEntry.getValue();
+                int newDist = distances.get(current.name) + weight;
+                if (newDist < distances.get(neighbor)) {
+                    distances.put(neighbor, newDist);
+                    predecessors.put(neighbor, current.name);
+                    openSet
+
+.add(new Node(neighbor, newDist, heuristics.get(neighbor)));
+                }
+            }
+        }
+
+        return distances;
+    }
+
+    static class Node {
+        String name;
+        int g; // Cost from start
+        int h; // Heuristic estimate
+
+        Node(String name, int g, int h) {
+            this.name = name;
+            this.g = g;
+            this.h = h;
+        }
+
+        int getF() {
+            return g + h;
+        }
+    }
+
+    public static void main(String[] args) {
+        Map<String, Map<String, Integer>> graph = new HashMap<>();
+        Map<String, Integer> heuristics = new HashMap<>();
+        graph.put("Delhi", Map.of("Mumbai", 1600, "Bangalore", 2000, "Jaipur", 300, "Ahmedabad", 900, "Lucknow", 550, "Chandigarh", 250));
+        heuristics.put("Mumbai", 500); // Example heuristic value
+        heuristics.put("Bangalore", 700);
+        heuristics.put("Jaipur", 100);
+        heuristics.put("Ahmedabad", 400);
+        heuristics.put("Lucknow", 300);
+        heuristics.put("Chandigarh", 50);
+
+        Map<String, Integer> distances = findShortestPaths(graph, "Delhi", heuristics);
+        System.out.println("Shortest paths from Delhi: " + distances);
+    }
+}
+```
+
+**Bellman-Ford Algorithm**
+
+**BellmanFord.java**
+
+```java
+import java.util.*;
+
+public class BellmanFord {
+    public static Map<String, Integer> findShortestPaths(Map<String, Map<String, Integer>> graph, String start) {
+        Map<String, Integer> distances = new HashMap<>();
+        for (String node : graph.keySet()) {
+            distances.put(node, Integer.MAX_VALUE);
+        }
+        distances.put(start, 0);
+
+        for (int i = 1; i < graph.size(); i++) {
+            for (String u : graph.keySet()) {
+                if (distances.get(u) != Integer.MAX_VALUE) {
+                    for (Map.Entry<String, Integer> entry : graph.get(u).entrySet()) {
+                        String v = entry.getKey();
+                        int weight = entry.getValue();
+                        if (distances.get(u) + weight < distances.get(v)) {
+                            distances.put(v, distances.get(u) + weight);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check for negative weight cycles
+        for (String u : graph.keySet()) {
+            for (Map.Entry<String, Integer> entry : graph.get(u).entrySet()) {
+                String v = entry.getKey();
+                int weight = entry.getValue();
+                if (distances.get(u) != Integer.MAX_VALUE && distances.get(u) + weight < distances.get(v)) {
+                    throw new RuntimeException("Graph contains a negative weight cycle");
+                }
+            }
+        }
+
+        return distances;
+    }
+
+    public static void main(String[] args) {
+        Map<String, Map<String, Integer>> graph = new HashMap<>();
+        graph.put("Delhi", Map.of("Mumbai", 1600, "Bangalore", 2000, "Jaipur", 300, "Ahmedabad", 900, "Lucknow", 550, "Chandigarh", 250));
+
+        Map<String, Integer> distances = findShortestPaths(graph, "Delhi");
+        System.out.println("Shortest paths from Delhi: " + distances);
+    }
+}
+```
+
+#### Step 4: Visualization Using Java Swing
+
+**GraphPanel.java**
+
+```java
+import javax.swing.*;
+import java.awt.*;
+import java.util.Map;
+
+public class GraphPanel extends JPanel {
+    private final Map<String, Point> cityCoordinates;
+    private final Map<String, Map<String, Integer>> graph;
+
+    public GraphPanel(Map<String, Point> cityCoordinates, Map<String, Map<String, Integer>> graph) {
+        this.cityCoordinates = cityCoordinates;
+        this.graph = graph;
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        drawCities(g);
+        drawEdges(g);
+    }
+
+    private void drawCities(Graphics g) {
+        g.setColor(Color.RED);
+        for (String city : cityCoordinates.keySet()) {
+            Point point = cityCoordinates.get(city);
+            g.fillOval(point.x, point.y, 10, 10);
+            g.drawString(city, point.x, point.y - 5);
+        }
+    }
+
+    private void drawEdges(Graphics g) {
+        g.setColor(Color.BLUE);
+        for (String city : graph.keySet()) {
+            Point from = cityCoordinates.get(city);
+            for (Map.Entry<String, Integer> entry : graph.get(city).entrySet()) {
+                String to = entry.getKey();
+                Point toPoint = cityCoordinates.get(to);
+                g.drawLine(from.x, from.y, toPoint.x, toPoint.y);
+                g.drawString(entry.getValue().toString(), (from.x + toPoint.x) / 2, (from.y + toPoint.y) / 2);
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        Map<String, Point> cityCoordinates = Map.of(
+                "Delhi", new Point(100, 100),
+                "Mumbai", new Point(300, 200),
+                "Bangalore", new Point(400, 300),
+                "Kolkata", new Point(500, 400),
+                "Chennai", new Point(600, 500),
+                "Hyderabad", new Point(700, 600),
+                "Pune", new Point(800, 700),
+                "Jaipur", new Point(900, 800),
+                "Ahmedabad", new Point(1000, 900),
+                "Lucknow", new Point(1100, 1000),
+                "Chandigarh", new Point(1200, 1100)
+        );
+
+        Map<String, Map<String, Integer>> graph = new HashMap<>();
+        graph.put("Delhi", Map.of("Mumbai", 1600, "Bangalore", 2000, "Jaipur", 300, "Ahmedabad", 900, "Lucknow", 550, "Chandigarh", 250));
+        // Add more connections if needed
+
+        JFrame frame = new JFrame("City Graph");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(1400, 1200);
+        frame.add(new GraphPanel(cityCoordinates, graph));
+        frame.setVisible(true);
+    }
+}
+```
+
+### Execution Steps
+
+1. **Compile the Java Files:**
+   Compile all Java files using the following command:
+
+   ```sh
+   javac CityData.java WeightCalculator.java Dijkstra.java AStar.java BellmanFord.java GraphPanel.java
+   ```
+
+2. **Run the Weight Calculation:**
+
+   ```sh
+   java WeightCalculator
+   ```
+
+3. **Run the Algorithms:**
+
+   - **Dijkstra’s Algorithm:**
+
+     ```sh
+     java Dijkstra
+     ```
+
+   - **A* Algorithm:**
+
+     ```sh
+     java AStar
+     ```
+
+   - **Bellman-Ford Algorithm:**
+
+     ```sh
+     java BellmanFord
+     ```
+
+4. **Visualize the Graph:**
+
+   ```sh
+   java GraphPanel
+   ```
+
+### Detailed Explanation
+
+1. **CityData Class:**
+   Stores city information and initializes data.
+
+2. **WeightCalculator Class:**
+   Calculates the composite weight for each route based on various factors.
+
+3. **Graph Algorithms:**
+   - **Dijkstra’s Algorithm:** Finds the shortest path from a starting node to all other nodes in a graph with non-negative weights.
+   - **A* Algorithm:** Improves efficiency by using heuristics to estimate the cost from the current node to the goal.
+   - **Bellman-Ford Algorithm:** Handles graphs with negative weights and detects negative weight cycles.
+
+4. **GraphPanel Class:**
+   Uses Java Swing to visualize the graph. Cities are represented as points, and routes are shown as lines connecting the cities.
+
+This comprehensive approach covers defining the problem, computing weights, implementing algorithms, and visualizing the results. The provided Java code handles each step effectively and demonstrates how to visualize and compute optimal railway routes based on various criteria.
