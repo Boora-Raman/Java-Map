@@ -1,15 +1,22 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.util.*;
+import java.util.List;
+
 public class GraphVisualizer {
     private List<Node> nodes;
     private List<Edge> edges;
     private List<Edge> optimizedEdges;
 
     public GraphVisualizer() {
-        nodes = new ArrayList<>(); // Initialize the nodes list
-        edges = new ArrayList<>(); // Initialize the edges list
-        optimizedEdges = new ArrayList<>(); // Initialize the optimizedEdges list
+        nodes = new ArrayList<>();
+        edges = new ArrayList<>();
+        optimizedEdges = new ArrayList<>();
     }
 
-    // Node class with Double data types
+    // Node class
     static class Node {
         String name;
         Double x, y;
@@ -20,20 +27,12 @@ public class GraphVisualizer {
             this.y = y;
         }
 
-        public String getName() {
-            return name;
-        }
-
-        public Double getX() {
-            return x;
-        }
-
-        public Double getY() {
-            return y;
-        }
+        public String getName() { return name; }
+        public Double getX() { return x; }
+        public Double getY() { return y; }
     }
 
-    // Edge class with Double data types
+    // Edge class
     static class Edge {
         Node source, target;
         Double distance;
@@ -54,20 +53,19 @@ public class GraphVisualizer {
             this.tourismPotentialTarget = tourismPotentialTarget;
         }
 
-        public Node getSource() {
-            return source;
-        }
-
-        public Node getTarget() {
-            return target;
-        }
-
-        public Double getDistance() {
-            return distance;
-        }
-
+        public Node getSource() { return source; }
+        public Node getTarget() { return target; }
+        public Double getDistance() { return distance; }
+        
+        // Composite weight used for algorithms
         public Double getCompositeWeight() {
-            return distance + populationDensitySource + economicWealthSource + tourismPotentialSource;
+            return distance + populationDensitySource + economicWealthSource + tourismPotentialSource +
+                    populationDensityTarget + economicWealthTarget + tourismPotentialTarget;
+        }
+
+        // To show the weight of the edge in the visualization
+        public String getEdgeLabel() {
+            return String.format("%.2f", getCompositeWeight());
         }
     }
 
@@ -77,9 +75,7 @@ public class GraphVisualizer {
              BufferedReader edgeReader = new BufferedReader(new FileReader(edgesFile))) {
 
             String line;
-
-            // Skip the header row for nodes.csv
-            nodeReader.readLine();
+            nodeReader.readLine(); // Skip header for nodes.csv
             while ((line = nodeReader.readLine()) != null) {
                 String[] parts = line.split(",");
                 if (parts.length == 3) {
@@ -90,8 +86,7 @@ public class GraphVisualizer {
                 }
             }
 
-            // Skip the header row for edges.csv
-            edgeReader.readLine();
+            edgeReader.readLine(); // Skip header for edges.csv
             while ((line = edgeReader.readLine()) != null) {
                 String[] parts = line.split(",");
                 if (parts.length == 9) {
@@ -119,7 +114,6 @@ public class GraphVisualizer {
         }
     }
 
-    // Find node by its name
     private Node findNodeByName(String name) {
         for (Node node : nodes) {
             if (node.getName().equals(name)) {
@@ -130,13 +124,21 @@ public class GraphVisualizer {
     }
 
     // Dijkstra's algorithm to calculate shortest path and optimized graph
-    private void calculateOptimizedGraph(String startNodeName) {
-        Node startNode = findNodeByName(startNodeName);
+    private void calculateOptimizedGraph(String startNodeName, String algorithm) {
+        Node startNode = findNodeByName("Delhi");
         if (startNode == null) {
             System.out.println("Start node not found!");
             return;
         }
 
+        // You can implement other algorithms like Bellman-Ford or A* here
+        // For now, Dijkstra's is implemented
+        if ("Dijkstra".equalsIgnoreCase(algorithm)) {
+            dijkstraAlgorithm(startNode);
+        }
+    }
+
+    private void dijkstraAlgorithm(Node startNode) {
         Map<Node, Double> distances = new HashMap<>();
         Map<Node, Node> previousNodes = new HashMap<>();
         PriorityQueue<Node> pq = new PriorityQueue<>(Comparator.comparing(distances::get));
@@ -167,12 +169,16 @@ public class GraphVisualizer {
         }
 
         // Reconstruct the optimized graph based on shortest paths
+        optimizedEdges.clear(); // Clear the list before adding new edges
+
+        // Go through the previousNodes map to add the shortest path edges to optimizedEdges
         for (Node node : nodes) {
             Node current = node;
             while (previousNodes.get(current) != null) {
                 Node previous = previousNodes.get(current);
+                // Create an optimized edge with correct composite weight
                 optimizedEdges.add(new Edge(previous, current, current.getX() - previous.getX(),
-                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0)); // Using dummy distances for now
                 current = previous;
             }
         }
@@ -197,7 +203,7 @@ public class GraphVisualizer {
             // Draw original graph edges
             for (Edge edge : edges) {
                 drawEdge(g2, edge.getSource().getX(), edge.getSource().getY(),
-                        edge.getTarget().getX(), edge.getTarget().getY(), edge.getDistance());
+                        edge.getTarget().getX(), edge.getTarget().getY(), edge.getCompositeWeight());
             }
 
             // Draw nodes
@@ -209,71 +215,120 @@ public class GraphVisualizer {
             }
         }
 
-        // Draw an edge with a label indicating distance
+        // Draw an edge with a label indicating composite weight
         private void drawEdge(Graphics2D g2, Double x1, Double y1, Double x2, Double y2, Double weight) {
             g2.setColor(Color.BLACK);
             g2.drawLine(x1.intValue(), y1.intValue(), x2.intValue(), y2.intValue());
             int midX = (x1.intValue() + x2.intValue()) / 2;
             int midY = (y1.intValue() + y2.intValue()) / 2;
-            g2.setColor(Color.BLUE);
             g2.drawString(String.format("%.2f", weight), midX, midY);
         }
     }
 
-    // Main method to run the program with GUI
     public static void main(String[] args) {
-        GraphVisualizer graphVisualizer = new GraphVisualizer();
-        graphVisualizer.loadGraph("nodes.csv", "edges.csv");
-
-        // Create the main window with a layout
-        JFrame frame = new JFrame("Graph Visualizer");
-        frame.setLayout(new BorderLayout());
-
-        // Information Display Panel (text area)
-        JPanel infoPanel = new JPanel();
-        JTextArea infoArea = new JTextArea(5, 20);
-        infoArea.setText("Welcome to the Graph Visualizer!");
-        infoArea.setEditable(false);
-        infoPanel.add(infoArea);
-
-        // Node, Edge, and Algorithm Selection Panels
-        JPanel selectionPanel = new JPanel();
-        selectionPanel.setLayout(new GridLayout(3, 2));
-
-        JComboBox<String> nodeComboBox = new JComboBox<>();
-        for (Node node : graphVisualizer.nodes) {
-            nodeComboBox.addItem(node.getName());
-        }
-        selectionPanel.add(new JLabel("Select Start Node:"));
-        selectionPanel.add(nodeComboBox);
-
-        JButton visualizeButton = new JButton("Visualize");
-
-        // Action on "Visualize" Button Pressed
-        visualizeButton.addActionListener(e -> {
-            String selectedNode = (String) nodeComboBox.getSelectedItem();
-            graphVisualizer.calculateOptimizedGraph(selectedNode);
-
-            // Create and display both graphs
-            JFrame originalFrame = new JFrame("Original Graph");
-            originalFrame.add(new GraphPanel(graphVisualizer.nodes, graphVisualizer.edges));
-            originalFrame.setSize(800, 800);
-            originalFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            originalFrame.setVisible(true);
-
-            JFrame optimizedFrame = new JFrame("Optimized Graph");
-            optimizedFrame.add(new GraphPanel(graphVisualizer.nodes, graphVisualizer.optimizedEdges));
-            optimizedFrame.setSize(800, 800);
-            optimizedFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            optimizedFrame.setVisible(true);
+        SwingUtilities.invokeLater(() -> {
+            GraphVisualizer graphVisualizer = new GraphVisualizer();
+            new WelcomeFrame(graphVisualizer);
         });
+    }
 
-        // Add components to main frame
-        frame.add(infoPanel, BorderLayout.NORTH);
-        frame.add(selectionPanel, BorderLayout.CENTER);
-        frame.add(visualizeButton, BorderLayout.SOUTH);
-        frame.setSize(600, 400);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setVisible(true);
+    static class WelcomeFrame {
+        public WelcomeFrame(GraphVisualizer graphVisualizer) {
+            JFrame welcomeFrame = new JFrame("Welcome to Graph Visualizer");
+            welcomeFrame.setLayout(new BorderLayout());
+            JPanel panel = new JPanel();
+            panel.setLayout(new GridLayout(2, 1));
+
+            JLabel titleLabel = new JLabel("Graph Optimizer and Visualizer", JLabel.CENTER);
+            panel.add(titleLabel);
+
+            JButton nextButton = new JButton("Next");
+            nextButton.addActionListener(e -> new FileSelectionFrame(graphVisualizer));
+            panel.add(nextButton);
+
+            welcomeFrame.add(panel, BorderLayout.CENTER);
+            welcomeFrame.setSize(400, 200);
+            welcomeFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            welcomeFrame.setVisible(true);
+        }
+    }
+
+    static class FileSelectionFrame {
+        public FileSelectionFrame(GraphVisualizer graphVisualizer) {
+            JFrame fileFrame = new JFrame("Select Files & Algorithm");
+            fileFrame.setLayout(new BorderLayout());
+
+            JPanel panel = new JPanel();
+            panel.setLayout(new GridLayout(4, 1));
+
+            // File selection for nodes
+            JLabel label1 = new JLabel("Select Nodes CSV File");
+            panel.add(label1);
+            JButton loadNodesButton = new JButton("Load Nodes");
+            JTextField nodesFilePath = new JTextField();
+            loadNodesButton.addActionListener(e -> {
+                JFileChooser fileChooser = new JFileChooser();
+                int returnValue = fileChooser.showOpenDialog(null);
+                if (returnValue == JFileChooser.APPROVE_OPTION) {
+                    File selectedFile = fileChooser.getSelectedFile();
+                    nodesFilePath.setText(selectedFile.getAbsolutePath());
+                }
+            });
+            panel.add(loadNodesButton);
+            panel.add(nodesFilePath);
+
+            // File selection for edges
+            JLabel label2 = new JLabel("Select Edges CSV File");
+            panel.add(label2);
+            JButton loadEdgesButton = new JButton("Load Edges");
+            JTextField edgesFilePath = new JTextField();
+            loadEdgesButton.addActionListener(e -> {
+                JFileChooser fileChooser = new JFileChooser();
+                int returnValue = fileChooser.showOpenDialog(null);
+                if (returnValue == JFileChooser.APPROVE_OPTION) {
+                    File selectedFile = fileChooser.getSelectedFile();
+                    edgesFilePath.setText(selectedFile.getAbsolutePath());
+                }
+            });
+            panel.add(loadEdgesButton);
+            panel.add(edgesFilePath);
+
+            // Algorithm selection
+            JLabel algorithmLabel = new JLabel("Select Algorithm:");
+            panel.add(algorithmLabel);
+            JComboBox<String> algorithmComboBox = new JComboBox<>(new String[]{"Dijkstra", "Bellman-Ford", "A*"});
+            panel.add(algorithmComboBox);
+
+            // Visualize button
+            JButton visualizeButton = new JButton("Visualize");
+            visualizeButton.addActionListener(e -> {
+                String nodesFile = nodesFilePath.getText();
+                String edgesFile = edgesFilePath.getText();
+                String selectedAlgorithm = (String) algorithmComboBox.getSelectedItem();
+
+                graphVisualizer.loadGraph(nodesFile, edgesFile);
+                graphVisualizer.calculateOptimizedGraph(nodesFile, selectedAlgorithm);
+
+                // Step 3: Visualization
+                JFrame originalFrame = new JFrame("Original Graph");
+                originalFrame.add(new GraphPanel(graphVisualizer.nodes, graphVisualizer.edges));
+                originalFrame.setSize(600, 600);
+                originalFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                originalFrame.setVisible(true);
+
+                JFrame optimizedFrame = new JFrame("Optimized Graph");
+                optimizedFrame.add(new GraphPanel(graphVisualizer.nodes, graphVisualizer.optimizedEdges));
+                optimizedFrame.setSize(600, 600);
+                optimizedFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                optimizedFrame.setVisible(true);
+            });
+            panel.add(visualizeButton);
+
+            fileFrame.add(panel, BorderLayout.CENTER);
+            fileFrame.setSize(400, 300);
+            fileFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            fileFrame.setVisible(true);
+        }
     }
 }
+
